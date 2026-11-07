@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#5DA130">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Cazador de Números</title>
+<style>
+:root{--ink:#1b1b1b;--green:#5DA130;--gold:#E8B923;--red:#C8302B;--blue:#2F4FBF;--cream:#FFF8E7}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#87CEEB;font-family:"Trebuchet MS",system-ui,sans-serif;color:var(--ink);touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+button{font:inherit;color:inherit;cursor:pointer}
+#app{position:fixed;inset:0}
+svg{display:block;shape-rendering:crispEdges}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;padding:max(env(safe-area-inset-top),10px) 12px max(env(safe-area-inset-bottom),12px);background:linear-gradient(#BFE6FF,#E9F9D8)}
+
+/* botones tipo bloque */
+.btn{--c:var(--green);font:900 clamp(18px,5.2vw,28px)/1 system-ui,sans-serif;letter-spacing:.5px;text-transform:uppercase;color:#fff;background:var(--c);border:4px solid var(--ink);padding:12px 16px;min-height:64px;display:flex;align-items:center;justify-content:center;gap:10px;text-shadow:2px 2px 0 rgba(0,0,0,.35);box-shadow:inset -5px -5px 0 rgba(0,0,0,.28),inset 5px 5px 0 rgba(255,255,255,.35)}
+.btn:active{transform:translateY(3px);box-shadow:inset 5px 5px 0 rgba(0,0,0,.28),inset -5px -5px 0 rgba(255,255,255,.2)}
+.btn.green{--c:#5DA130}.btn.gold{--c:#d19a10}.btn.red{--c:#C8302B}.btn.blue{--c:#2F4FBF}.btn.gray{--c:#6f6f6f}
+.btn.big{min-height:84px}
+.btn svg{width:44px;height:36px}
+.sq{width:60px;min-width:60px;height:60px;min-height:0;padding:0;font-size:28px}
+.hud{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.chip{display:flex;align-items:center;gap:8px;background:var(--cream);border:4px solid var(--ink);padding:6px 14px;font-weight:900;font-size:26px;box-shadow:inset -4px -4px 0 rgba(0,0,0,.15)}
+.chip svg{width:28px;height:28px}
+
+/* menú */
+.sky{position:relative;flex:1;min-height:0;border:4px solid var(--ink);background:linear-gradient(#6EC1F0,#BFE6FF);overflow:hidden}
+.sky .title{position:absolute;left:0;right:0;top:14px;text-align:center;font:900 clamp(26px,8vw,40px)/1.05 system-ui,sans-serif;text-transform:uppercase;color:#fff;letter-spacing:1px;text-shadow:3px 3px 0 #2F4FBF,-2px -2px 0 #2F4FBF,3px -2px 0 #2F4FBF,-2px 3px 0 #2F4FBF;z-index:1}
+.sky .scene{position:absolute;inset:0}
+.sky .scene svg{width:100%;height:100%}
+.strip{display:grid;grid-template-columns:repeat(9,1fr);gap:4px}
+.tile{background:var(--cream);border:3px solid var(--ink);padding:3px}
+.tile svg{width:100%;height:auto}
+.menubtns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* contar */
+.grid{flex:none;width:min(100%,58vh);align-self:center;aspect-ratio:1;margin:auto 0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:10px}
+.cell{position:relative;background:rgba(255,255,255,.6);border:4px solid var(--ink);padding:12px;display:flex;align-items:center;justify-content:center;min-height:0}
+.cell.empty{visibility:hidden}
+.cell .spr{display:block;width:100%;height:100%}
+.cell .spr svg{width:100%;height:100%}
+.cell .tick{position:absolute;right:4px;top:-2px;font-size:34px;display:none;filter:drop-shadow(2px 2px 0 rgba(0,0,0,.3))}
+.cell.on{background:#c8f5a8}.cell.on .spr{opacity:.8;transform:scale(.88)}.cell.on .tick{display:block}
+.cell.hl{outline:7px solid #FFE066;outline-offset:-3px}
+.shake{animation:shake .45s}
+@keyframes shake{20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+.answer{min-height:112px;display:flex;align-items:center;justify-content:center;gap:12px;position:relative}
+.hint{font-size:56px;animation:bounce 1s ease infinite}
+.mic{width:110px;height:100px;font-size:52px;animation:pulse 1.2s ease infinite}
+.mic.listening{--c:#e8521e;animation:pulse .5s ease infinite}
+@keyframes pulse{50%{transform:scale(1.1)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.numpad{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;width:100%}
+.numpad .btn{min-height:56px;padding:6px 0;font-size:24px}
+.parentok{position:absolute;left:0;bottom:0;width:44px;height:44px;border:3px solid rgba(0,0,0,.25);background:rgba(255,255,255,.35);color:rgba(0,0,0,.35);font-size:22px;font-weight:900}
+.holding{background:rgba(93,161,48,.6)!important}
+
+/* revelar */
+.reveal{align-items:center;text-align:center}
+.reveal .hud{width:100%}
+.bigwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;width:100%}
+.bigwrap svg{height:100%;max-height:48vh;width:auto;max-width:80vw;animation:bounce 1.1s ease infinite;filter:drop-shadow(0 8px 0 rgba(0,0,0,.18))}
+.qty{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:320px}
+.qty svg{width:30px;height:30px}
+.reveal #go,.found #again{width:100%}
+
+/* escondidas */
+.hunt{padding:0;background:#000}
+.hunt video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#111}
+.hunt .frame{position:absolute;left:50%;top:52%;width:64vmin;height:64vmin;transform:translate(-50%,-50%);border:6px dashed rgba(255,255,255,.85);pointer-events:none}
+.hunt .overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:max(env(safe-area-inset-top),10px) 12px 16px;pointer-events:none}
+.hunt .overlay>*{pointer-events:auto}
+.topline{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.targetbox{display:flex;align-items:center;gap:12px;background:var(--cream);border:4px solid var(--ink);padding:8px 14px;box-shadow:inset -4px -4px 0 rgba(0,0,0,.15)}
+.targetbox svg{height:84px;width:auto}
+.targetbox .spk{font-size:34px}
+.hunt .parentok{position:static}
+.msg{align-self:center;background:var(--cream);border:4px solid var(--ink);padding:12px 18px;font-weight:900;font-size:26px;text-align:center;max-width:92%}
+.msg.bad{background:#ffd6d2}
+
+/* encontrado */
+.found{align-items:center;text-align:center;overflow:hidden}
+.found .bigwrap svg{max-height:34vh}
+.gain{display:flex;align-items:center;gap:10px;font-size:54px;font-weight:900;text-shadow:3px 3px 0 rgba(0,0,0,.2)}
+.gain svg{width:56px;height:56px}
+.cf{position:absolute;top:-40px;border:2px solid rgba(0,0,0,.35);animation:fall 1.9s linear forwards;pointer-events:none}
+@keyframes fall{to{transform:translateY(115vh) rotate(420deg)}}
+.row{display:flex;gap:10px;width:100%}.row .btn{flex:1}
+
+/* tienda */
+.mini{position:relative;height:30vh;min-height:150px;border:4px solid var(--ink);background:linear-gradient(#6EC1F0,#BFE6FF);overflow:hidden;flex:none}
+.mini svg{position:absolute;inset:0;width:100%;height:100%}
+.tabs{display:flex;gap:6px;flex:none}
+.tab{flex:1;height:60px;background:var(--cream);border:4px solid var(--ink);padding:4px}
+.tab.on{background:var(--gold)}
+.tab svg{width:100%;height:100%}
+.items{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(2,1fr);gap:10px;align-content:start;padding-bottom:8px}
+.item{position:relative;background:var(--cream);border:4px solid var(--ink);padding:8px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.item .ico{height:92px;width:100%;display:flex;align-items:center;justify-content:center}
+.item .ico svg{height:100%;width:auto;max-width:100%}
+.item .nm{font-weight:800;font-size:15px}
+.item.cant{opacity:.7}
+.item.owned{background:#c8f5a8}
+.item.eq{outline:6px solid var(--gold);outline-offset:-3px}
+.price{display:flex;align-items:center;gap:6px;font-weight:900;font-size:24px}
+.price svg{width:24px;height:24px}
+.badge{position:absolute;top:2px;right:6px;font-size:26px}
+.modal{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:5}
+.panel{background:var(--cream);border:5px solid var(--ink);padding:18px;display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:360px}
+.panel .ico{height:140px}.panel .ico svg{height:100%;width:auto}
+
+/* padres */
+.parent{overflow:auto;padding-bottom:30px}
+.pcard{background:var(--cream);border:4px solid var(--ink);padding:12px;display:flex;flex-direction:column;gap:8px;flex:none}
+.pcard h3{margin:0;font-size:18px}
+.pcard .btn{font-size:16px;min-height:46px;padding:8px}
+.pcard small{opacity:.75}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips .btn{flex:1;min-width:44px}
+.btn.sel{--c:#d19a10}
+
+.toastf{position:fixed;left:50%;bottom:16%;transform:translateX(-50%);z-index:20;background:var(--cream);border:4px solid var(--ink);padding:10px 18px;font-weight:900;font-size:24px;text-align:center;max-width:90%}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+/* =========================================================
+   CAZADOR DE NÚMEROS · juego de escondidas con tarjetas QR
+   ========================================================= */
+
+// ---------- utilidades ----------
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const rnd = n => Math.floor(Math.random() * n);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function hash(x, y, s) { let h = Math.imul(x + 1, 374761393) + Math.imul(y + 1, 668265263) + Math.imul(s + 1, 1274126177); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) % 1000 / 1000; }
+function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255; const t = f < 0 ? 0 : 255, k = Math.abs(f); r = Math.round(r + (t - r) * k); g = Math.round(g + (t - g) * k); b = Math.round(b + (t - b) * k); return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1); }
+const vib = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) { } };
+
+// ---------- pixel art: celdas -> SVG ----------
+const svgOf = (w, h, cells, par = 'xMidYMid meet') => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="${par}" shape-rendering="crispEdges">${cells.map(c => `<rect x="${c[0]}" y="${c[1]}" width="${c[2]}" height="${c[3]}" fill="${c[4]}"/>`).join('')}</svg>`;
+function fnCells(w, h, fn, ox = 0, oy = 0, out = []) {
+  for (let y = 0; y < h; y++) { let x = 0; while (x < w) { const c = fn(x, y); let e = x + 1; while (e < w && fn(e, y) === c) e++; if (c) out.push([ox + x, oy + y, e - x, 1, c]); x = e; } }
+  return out;
+}
+function mapCells(map, pal, ox = 0, oy = 0, out = []) {
+  map.forEach((row, y) => { let x = 0; while (x < row.length) { const ch = row[x]; let e = x + 1; while (e < row.length && row[e] === ch) e++; if (pal[ch]) out.push([ox + x, oy + y, e - x, 1, pal[ch]]); x = e; } });
+  return out;
+}
+
+// ---------- fuente de números (5x7) y colores tipo materiales ----------
+const FONT = {
+  1: ["..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."],
+  2: [".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"],
+  3: [".###.", "#...#", "....#", "..##.", "....#", "#...#", ".###."],
+  4: ["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."],
+  5: ["#####", "#....", "####.", "....#", "....#", "#...#", ".###."],
+  6: ["..##.", ".#...", "#....", "####.", "#...#", "#...#", ".###."],
+  7: ["#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."],
+  8: [".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."],
+  9: [".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.."],
+};
+const COLORS = {
+  1: ['#5DA130', '#8BD14E', '#3B6B1C'], 2: ['#8B5A2B', '#B8814A', '#5A3A1B'], 3: ['#8A8A8A', '#B5B5B5', '#5A5A5A'],
+  4: ['#E8B923', '#FFE066', '#A07E0A'], 5: ['#2BC4C4', '#7FEFEF', '#178080'], 6: ['#C8302B', '#F06A64', '#821B18'],
+  7: ['#2F4FBF', '#6E8CF0', '#1A2E7A'], 8: ['#8A3FC4', '#B97FF0', '#55257E'], 9: ['#E8761E', '#FFA85C', '#A04D0C'],
+};
+const GRAY = ['#9aa5ad', '#b8c2c9', '#7b868e'];
+function numeralSVG(n, gray) {
+  const col = gray ? GRAY : COLORS[n], s = 7, out = [];
+  FONT[n].forEach((row, r) => { for (let k = 0; k < 5; k++) if (row[k] === '#') { const x = k * s, y = r * s; out.push([x, y, s, s, col[0]], [x, y, s, 1, col[1]], [x, y, 1, s, col[1]], [x, y + s - 1, s, 1, col[2]], [x + s - 1, y, 1, s, col[2]]); } });
+  return svgOf(35, 49, out);
+}
+
+// ---------- bloques, cofres, camas, lobo, moneda ----------
+const BLOCKS = {
+  grass: (x, y) => y < 2 ? (hash(x, y, 1) < .3 ? '#8BD14E' : '#5DA130') : (hash(x, y, 2) < .25 ? '#6b431f' : '#8B5A2B'),
+  dirt: (x, y) => hash(x, y, 3) < .25 ? '#6b431f' : (hash(x, y, 4) < .15 ? '#a8743d' : '#8B5A2B'),
+  stone: (x, y) => hash(x, y, 5) < .3 ? '#6f6f6f' : (hash(x, y, 6) < .2 ? '#a5a5a5' : '#8a8a8a'),
+  gold: (x, y) => ((x + y) % 4 === 0 && hash(x, y, 7) < .7) ? '#FFE066' : (hash(x, y, 8) < .2 ? '#b8860b' : '#E8B923'),
+  diamond: (x, y) => hash(x, y, 9) < .28 ? '#7FEFEF' : (hash(x, y, 10) < .2 ? '#178080' : '#2BC4C4'),
+};
+function blockCells(type) {
+  const f = BLOCKS[type];
+  return fnCells(8, 8, (x, y) => { let c = f(x, y); if (x === 7 || y === 7) c = shade(c, -.28); else if (x === 0 || y === 0) c = shade(c, .22); return c; });
+}
+const blockSVG = t => svgOf(8, 8, blockCells(t));
+
+const CHEST = [".DDDDDDDD.", "DWWWWWWWWD", "DWwwwwwwWD", "DDDDLLDDDD", "DWWWLLWWWD", "DWWWWWWWWD", "DWWWWWWWWD", "DDDDDDDDDD"];
+const CHESTPAL = {
+  wood: { W: '#A0692F', w: '#C48A4A', D: '#5A3A1B', L: '#E8B923' },
+  iron: { W: '#BDBDBD', w: '#E0E0E0', D: '#5a5a5a', L: '#E8B923' },
+  gold: { W: '#E8B923', w: '#FFE066', D: '#8a6a08', L: '#ffffff' },
+  diamond: { W: '#2BC4C4', w: '#7FEFEF', D: '#137070', L: '#ffffff' },
+};
+const BED = ["HH..........", "HHPPBBBBBBBB", "HHPPBBBBBBBB", "HHHHHHHHHHHH", "HH........HH", "HH........HH"];
+const BEDCOL = { red: '#C8302B', blue: '#2F4FBF', green: '#5DA130', purple: '#8A3FC4' };
+const bedPal = c => ({ H: '#4a2d12', P: '#F2F2F2', B: BEDCOL[c] });
+const WOLF = ["dd......dd", "dgg....ggd", ".gggggggg.", ".gkggggkg.", ".gggwwggg.", "..gwkkwg..", "..rrrrrr..", ".gggggggg.", ".gggwwggg.", ".ww....ww."];
+const WOLFPAL = { g: '#BDBDBD', d: '#7d7d7d', k: '#1b1b1b', w: '#F2F2F2', r: '#C8302B' };
+const COIN = ["..dddd..", ".dYYYYd.", "dYYwwYYd", "dYwYYYYd", "dYwYYYYd", "dYYYYYYd", ".dYYYYd.", "..dddd.."];
+const COINPAL = { d: '#A07E0A', Y: '#E8B923', w: '#FFE066' };
+const coinSVG = () => svgOf(8, 8, mapCells(COIN, COINPAL));
+const CLOUD = ["...WWW...", ".WWWWWWW.", "WWWWWWWWW"];
+const chestSVG = t => svgOf(10, 8, mapCells(CHEST, CHESTPAL[t || 'wood']));
+const bedSVG = c => svgOf(12, 6, mapCells(BED, bedPal(c || 'red')));
+function itemSVG(type) { return type === 'chest' ? chestSVG('wood') : type === 'bed' ? bedSVG('red') : blockSVG(type); }
+const ITEM_TYPES = ['grass', 'dirt', 'stone', 'gold', 'diamond', 'chest', 'bed'];
+
+// ---------- personaje y espadas ----------
+const CHAR = [
+  "...HHHHHH...", "...HHHHHH...", "...HSSSSH...", "...SESSES...", "...SSSSSS...", "...SSMMSS...",
+  ".BBBBBBBBBB.", ".BBBBBBBBBB.", ".BBBBBBBBBB.", ".SSBBBBBBSS.", ".SSBBBBBBSS.", "...BBBBBB...", "...BBBBBB...",
+  "...PPQQPP...", "...PPQQPP...", "...PPQQPP...", "...PPQQPP...", "...PPQQPP...", "...KKKKKK...",
+];
+const ARMOR = {
+  leather: { H: '#8B5A2B', B: '#A0692F', P: '#7a4a22', Q: '#5a3a1b', K: '#5a3a1b' },
+  iron: { H: '#C0C0C0', B: '#D0D0D0', P: '#A8A8A8', Q: '#7a7a7a', K: '#7a7a7a' },
+  gold: { H: '#FFE066', B: '#E8B923', P: '#C99a14', Q: '#A07E0A', K: '#A07E0A' },
+  diamond: { H: '#7FEFEF', B: '#2BC4C4', P: '#1fa0a0', Q: '#178080', K: '#178080' },
+};
+const SWORD = { wood: ['#A0692F', '#C48A4A'], stone: ['#8a8a8a', '#b5b5b5'], iron: ['#D0D0D0', '#F2F2F2'], gold: ['#E8B923', '#FFE066'], diamond: ['#2BC4C4', '#7FEFEF'] };
+function swordCells(type, ox = 0, oy = 0, out = []) {
+  const [b, l] = SWORD[type];
+  out.push([ox + 1, oy, 1, 7, l], [ox + 2, oy, 1, 7, b], [ox, oy + 7, 4, 1, '#5A3A1B'], [ox + 1, oy + 8, 2, 2, '#8B5A2B'], [ox + 1, oy + 10, 2, 1, '#E8B923']);
+  return out;
+}
+function charCells(armor, sword, ox = 0, oy = 0, out = []) {
+  const base = { H: '#5a3a1b', S: '#F2C79B', E: '#1b1b1b', M: '#b5654a', B: '#3B7DD8', P: '#3A3A8C', Q: '#27275e', K: '#4a4a4a' };
+  mapCells(CHAR, Object.assign({}, base, ARMOR[armor] || {}), ox, oy, out);
+  if (sword) swordCells(sword, ox + 11, oy + 2, out);
+  return out;
+}
+const charSVG = (armor, sword) => svgOf(15, 19, charCells(armor, sword));
+
+// ---------- paredes de la casa ----------
+const WALLS = {
+  wood: (x, y) => { if (y % 4 === 3) return '#5A3A1B'; if ((x + (y >> 2) * 3) % 11 === 0) return '#6e4522'; return hash(x, y, 11) < .15 ? '#b57a3a' : '#A0692F'; },
+  stone: (x, y) => { const r = hash(x >> 1, y >> 1, 12); return r < .25 ? '#6f6f6f' : r < .55 ? '#8a8a8a' : r < .85 ? '#9a9a9a' : '#b0b0b0'; },
+  brick: (x, y) => { if (y % 4 === 3 || (x + ((y >> 2) % 2) * 4) % 8 === 7) return '#d8cbb5'; return hash(x, y, 13) < .2 ? '#8f2f24' : '#A33B2E'; },
+  obsidian: (x, y) => hash(x, y, 14) < .18 ? '#4b2a8a' : hash(x, y, 15) < .4 ? '#2a1650' : '#1c1030',
+  gold: (x, y) => (x % 6 === 5 || y % 6 === 5) ? '#b8860b' : hash(x, y, 16) < .2 ? '#FFE066' : '#E8B923',
+  diamond: (x, y) => (x % 6 === 5 || y % 6 === 5) ? '#178080' : hash(x, y, 17) < .25 ? '#7FEFEF' : '#2BC4C4',
+};
+
+// ---------- escena: casa + personaje + cosas compradas ----------
+function sceneCells(st) {
+  const c = [];
+  const e = st.equip;
+  mapCells(CLOUD, { W: '#ffffff' }, 5, 6, c);
+  mapCells(CLOUD, { W: '#ffffff' }, 41, 3, c);
+  c.push([54, 9, 6, 6, '#FFE066'], [55, 10, 4, 4, '#FFF3A0']);
+  // pasto y tierra (se extienden más allá de los bordes para pantallas anchas)
+  const GX = -80;
+  fnCells(224, 26, (x, y) => {
+    if (y === 0) return hash(x, y, 20) < .3 ? '#a3e063' : '#8BD14E';
+    if (y < 20) return hash(x, y, 21) < .12 ? '#4a8a24' : hash(x, y, 24) < .1 ? '#8BD14E' : '#5DA130';
+    return hash(x, y, 22) < .25 ? '#6b431f' : (hash(x, y, 23) < .12 ? '#a8743d' : '#8B5A2B');
+  }, GX, 38, c);
+  // caminito de la puerta
+  fnCells(7, 20, (x, y) => hash(x, y, 30) < .3 ? '#a8743d' : '#c49a5c', 29, 38, c);
+  // paredes
+  const wf = WALLS[e.wall || 'wood'];
+  fnCells(30, 20, (x, y) => { let col = wf(x, y); if (x < 1 || x > 28 || y < 1) col = shade(col, -.3); return col; }, 18, 18, c);
+  // techo
+  fnCells(64, 11, (x, y0) => {
+    const y = y0 + 7, half = 2 + Math.round((y - 7) * 16 / 10), l = 32 - half, r = 33 + half;
+    if (x < l || x > r) return null;
+    if (y === 17 || x === l || x === r) return '#5e1b19';
+    return (x + y) % 6 < 3 ? '#a8403b' : '#8f2d2a';
+  }, 0, 7, c);
+  // puerta y ventanas
+  fnCells(7, 14, (x, y) => (x === 0 || x === 6 || y === 0) ? '#3a230f' : (x === 5 && y === 7) ? '#E8B923' : (y % 5 === 4 ? '#5A3A1B' : '#7a4a22'), 29, 24, c);
+  const win = (x, y) => (x === 0 || y === 0 || x === 4 || y === 4 || x === 2 || y === 2) ? '#5A3A1B' : '#BFE6FF';
+  fnCells(5, 5, win, 21, 23, c); fnCells(5, 5, win, 40, 23, c);
+  // lo comprado, repartido por el jardín
+  if (e.chest) mapCells(CHEST, CHESTPAL[e.chest], 50, 30, c);
+  if (e.bed) mapCells(BED, bedPal(e.bed), 34, 52, c);
+  if (st.wolf) mapCells(WOLF, WOLFPAL, 21, 48, c);
+  charCells(e.armor, e.sword, 4, 39, c);
+  return c;
+}
+const sceneSVG = st => svgOf(64, 64, sceneCells(st || S), 'xMidYMax meet');
+
+// ---------- datos guardados ----------
+const SAVE_KEY = 'cn-numeros-v1';
+function defaults() {
+  return { coins: 0, found: {}, owned: { 'wall:wood': true }, equip: { armor: null, sword: null, wall: 'wood', bed: null, chest: null }, wolf: false, max: 0, voice: true, mic: true, totalFound: 0, last: 0 };
+}
+function load() {
+  const d = defaults();
+  try {
+    const j = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (j && typeof j === 'object') {
+      Object.assign(d, j);
+      d.equip = Object.assign(defaults().equip, j.equip || {});
+      d.owned = Object.assign({ 'wall:wood': true }, j.owned || {});
+      d.found = j.found || {};
+    }
+  } catch (e) { }
+  return d;
+}
+let S = defaults();
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { } }
+
+// ---------- sonido y voz ----------
+let AC = null;
+function unlockAudio() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) { } }
+function tone(f, t = 0, d = .12, type = 'square', vol = .06) {
+  try {
+    if (!AC) return; const o = AC.createOscillator(), g = AC.createGain(), st = AC.currentTime + t;
+    o.type = type; o.frequency.value = f; g.gain.setValueAtTime(vol, st); g.gain.exponentialRampToValueAtTime(.0001, st + d);
+    o.connect(g); g.connect(AC.destination); o.start(st); o.stop(st + d + .02);
+  } catch (e) { }
+}
+const sfx = {
+  pop: (f = 400) => tone(f, 0, .09),
+  ok: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .1, .16)),
+  coin: () => { tone(988, 0, .08); tone(1319, .08, .28); },
+  bad: () => { tone(220, 0, .18, 'sawtooth', .05); tone(165, .15, .25, 'sawtooth', .05); },
+  buy: () => [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, i * .07, .14)),
+};
+const WORDS = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve', 'veinte'];
+const numWord = n => WORDS[n] || String(n);
+const hasTTS = () => typeof window !== 'undefined' && 'speechSynthesis' in window;
+function mkUtter(t) {
+  const u = new SpeechSynthesisUtterance(t); u.lang = 'es-MX'; u.rate = .88; u.pitch = 1.15;
+  try { const vs = speechSynthesis.getVoices(); const v = vs.find(v => /^es[-_]MX/i.test(v.lang)) || vs.find(v => /^es/i.test(v.lang)); if (v) u.voice = v; } catch (e) { }
+  return u;
+}
+function speak(t) { if (!S.voice || !hasTTS()) return; try { speechSynthesis.cancel(); speechSynthesis.speak(mkUtter(t)); } catch (e) { } }
+function speakWait(t) {
+  return new Promise(res => {
+    if (!S.voice || !hasTTS()) return setTimeout(res, 800);
+    let done = false; const fin = () => { if (!done) { done = true; res(); } };
+    try { const u = mkUtter(t); u.onend = fin; u.onerror = fin; setTimeout(fin, 3000); speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { fin(); }
+  });
+}
+
+// reconocimiento de voz: dice un número -> lo entendemos
+const NUMMAP = { cero: 0, un: 1, uno: 1, una: 1, dos: 2, tres: 3, tes: 3, cuatro: 4, cuato: 4, cinco: 5, sinco: 5, seis: 6, sies: 6, siete: 7, ocho: 8, nueve: 9, nuebe: 9 };
+function parseNums(txt) {
+  const t = String(txt).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); const out = [];
+  (t.match(/\d+|[a-z]+/g) || []).forEach(w => { if (/^\d+$/.test(w)) out.push(parseInt(w, 10)); else if (Object.prototype.hasOwnProperty.call(NUMMAP, w)) out.push(NUMMAP[w]); });
+  return out;
+}
+// de varias alternativas del reconocedor: el número final dicho en cada una
+function finalNumbers(alts) { return (alts || []).map(t => { const a = parseNums(t); return a.length ? a[a.length - 1] : null; }).filter(x => x !== null); }
+const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+let REC = null;
+function listen(done) {
+  let r; try { r = new SR(); } catch (e) { done({ error: 'unsupported' }); return null; }
+  r.lang = 'es-MX'; r.interimResults = false; r.maxAlternatives = 5; r.continuous = false;
+  let got = false; const fin = o => { if (!got) { got = true; done(o); } };
+  r.onresult = e => { const alts = []; for (let i = e.resultIndex; i < e.results.length; i++) { const res = e.results[i]; for (let j = 0; j < res.length; j++) alts.push(res[j].transcript); } fin({ alts }); };
+  r.onerror = e => fin({ error: e.error });
+  r.onend = () => fin({ alts: [] });
+  try { r.start(); } catch (e) { fin({ error: 'start' }); }
+  return r;
+}
+function stopListen() { try { REC && REC.abort(); } catch (e) { } REC = null; }
+
+// ---------- lector de QR (BarcodeDetector, o jsQR.js si lo pones junto al juego) ----------
+let SCAN = { stream: null, timer: null, on: false };
+const loadScript = src => new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.head.appendChild(s); });
+async function makeDetector() {
+  if ('BarcodeDetector' in window) {
+    try { const f = await BarcodeDetector.getSupportedFormats(); if (f.includes('qr_code')) return { kind: 'barcode', det: new BarcodeDetector({ formats: ['qr_code'] }) }; } catch (e) { }
+  }
+  if (!window.jsQR) { try { await loadScript('jsQR.js'); } catch (e) { } }
+  return window.jsQR ? { kind: 'jsqr' } : null;
+}
+async function startScan(video, onText) {
+  stopScan();
+  const d = await makeDetector();
+  if (!d) throw new Error('noscanner');
+  SCAN.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+  video.srcObject = SCAN.stream; video.setAttribute('playsinline', ''); video.muted = true;
+  await video.play();
+  const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+  SCAN.on = true;
+  const loop = async () => {
+    if (!SCAN.on) return;
+    try {
+      if (video.readyState >= 2 && video.videoWidth) {
+        let text = null;
+        if (d.kind === 'barcode') { const r = await d.det.detect(video); if (r.length) text = r[0].rawValue; }
+        else {
+          const w = Math.min(640, video.videoWidth), h = Math.round(video.videoHeight * w / video.videoWidth);
+          cv.width = w; cv.height = h; cx.drawImage(video, 0, 0, w, h);
+          const id = cx.getImageData(0, 0, w, h), r = window.jsQR(id.data, w, h); if (r) text = r.data;
+        }
+        if (text && SCAN.on) onText(text);
+      }
+    } catch (e) { }
+    if (SCAN.on) SCAN.timer = setTimeout(loop, 150);
+  };
+  loop();
+}
+function stopScan() {
+  SCAN.on = false; clearTimeout(SCAN.timer);
+  try { SCAN.stream && SCAN.stream.getTracks().forEach(t => t.stop()); } catch (e) { }
+  SCAN.stream = null;
+}
+
+// ---------- lógica del juego ----------
+const maxNum = () => S.max > 0 ? S.max : Math.min(9, 3 + Math.floor(S.totalFound / 4));
+function pickNumber(M) {
+  const ws = [];
+  for (let n = 1; n <= M; n++) { if (n === S.last && M > 1) continue; ws.push([n, 1 / (1 + (S.found[n] || 0))]); }
+  const tot = ws.reduce((a, b) => a + b[1], 0); let r = Math.random() * tot;
+  for (const [n, w] of ws) { if ((r -= w) <= 0) return n; }
+  return ws[ws.length - 1][0];
+}
+function onHold(el, ms, fn) {
+  let t; const s = e => { e.preventDefault(); el.classList.add('holding'); t = setTimeout(() => { el.classList.remove('holding'); fn(); }, ms); };
+  const c = () => { clearTimeout(t); el.classList.remove('holding'); };
+  el.addEventListener('pointerdown', s); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, c));
+}
+let app, R = null, H = null, CUR = '', TIMERS = [];
+const later = (fn, ms) => { const t = setTimeout(fn, ms); TIMERS.push(t); return t; };
+function toast(msg) {
+  const old = $('.toastf'); if (old) old.remove();
+  const el = document.createElement('div'); el.className = 'toastf'; el.textContent = msg; document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1800);
+}
+function confetti(root, k = 28) {
+  for (let i = 0; i < k; i++) {
+    const d = document.createElement('i'); d.className = 'cf';
+    const s = 10 + rnd(14);
+    d.style.cssText = `left:${rnd(100)}%;background:${COLORS[1 + rnd(9)][0]};animation-delay:${rnd(80) / 100}s;width:${s}px;height:${s}px`;
+    root.appendChild(d);
+  }
+}
+function cleanup() { stopScan(); stopListen(); try { hasTTS() && speechSynthesis.cancel(); } catch (e) { } TIMERS.forEach(clearTimeout); TIMERS = []; }
+function go(name, arg) { cleanup(); CUR = name; R = name === 'count' ? null : R; SCREENS[name](arg); }
+const coinChip = () => `<div class="chip">${coinSVG()}<b>${S.coins}</b></div>`;
+const qtyBlocks = (n, type = 'grass') => Array.from({ length: n }, () => `<span>${blockSVG(type)}</span>`).join('');
+
+// ---- MENÚ ----
+function menu() {
+  const strip = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<div class="tile">${numeralSVG(n, !S.found[n])}</div>`).join('');
+  app.innerHTML = `<div class="screen menu">
+    <div class="hud">${coinChip()}<button class="btn gray sq" id="gear">⚙</button></div>
+    <div class="sky"><div class="title">Cazador<br>de números</div><div class="scene">${sceneSVG()}</div></div>
+    <div class="strip">${strip}</div>
+    <div class="menubtns"><button class="btn green big" id="play">▶ Jugar</button><button class="btn gold big" id="shop">${chestSVG('wood')}<span>Tienda</span></button></div>
+  </div>`;
+  $('#play').onclick = () => { unlockAudio(); sfx.pop(500); go('count'); };
+  $('#shop').onclick = () => { unlockAudio(); sfx.pop(500); go('shop'); };
+  onHold($('#gear'), 1200, () => go('parent'));
+}
+
+// ---- CONTAR ----
+function count() {
+  const n = pickNumber(maxNum()); S.last = n; save();
+  const type = ITEM_TYPES[rnd(ITEM_TYPES.length)];
+  const pos = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8]).slice(0, n);
+  const me = R = { n, type, pos, done: new Set(), fails: 0, asked: false, helping: false };
+  const cells = [...Array(9)].map((_, i) => pos.includes(i) ? `<button class="cell" data-i="${i}"><span class="spr">${itemSVG(type)}</span><span class="tick">✓</span></button>` : `<div class="cell empty"></div>`).join('');
+  app.innerHTML = `<div class="screen count">
+    <div class="hud"><button class="btn gray sq" id="home">⌂</button>${coinChip()}<button class="btn blue sq" id="help">🔊</button></div>
+    <div class="grid" id="grid">${cells}</div>
+    <div class="answer" id="answer"><div class="hint">👆</div></div>
+  </div>`;
+  $('#home').onclick = () => go('menu');
+  $('#help').onclick = () => { unlockAudio(); helpCount(); };
+  $$('.cell[data-i]').forEach(b => b.onclick = () => {
+    unlockAudio(); if (R !== me || me.asked || me.helping) return;
+    const i = +b.dataset.i;
+    if (me.done.has(i)) { me.done.delete(i); b.classList.remove('on'); sfx.pop(300); return; }
+    me.done.add(i); b.classList.add('on'); sfx.pop(300 + 60 * me.done.size); vib(25);
+    if (me.done.size === me.n) later(ask, 500);
+  });
+  later(() => speak('Cuenta cuántos hay'), 350);
+}
+function canMic() { return !!SR && S.mic; }
+function ask() {
+  const el = $('#answer'); if (!el || !R) return; R.asked = true;
+  if (canMic()) {
+    el.innerHTML = `<button class="btn red mic" id="mic">🎤</button><button class="parentok" id="pok">✓</button>`;
+    $('#mic').onclick = () => { unlockAudio(); startMic(); };
+    onHold($('#pok'), 900, () => check(R.n));
+    speak('¿Cuántos son?');
+  } else showNumpad();
+}
+function showNumpad() {
+  const el = $('#answer'); if (!el) return;
+  el.innerHTML = `<div class="numpad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button class="btn blue" data-n="${n}">${n}</button>`).join('')}</div>`;
+  $$('.numpad .btn').forEach(b => b.onclick = () => { unlockAudio(); check(+b.dataset.n); });
+  speak('¿Cuántos son?');
+}
+function startMic() {
+  const btn = $('#mic'); if (!btn || !R) return; const me = R;
+  stopListen(); btn.classList.add('listening');
+  REC = listen(res => {
+    if (R !== me) return;
+    const b = $('#mic'); if (b) b.classList.remove('listening');
+    if (res.error && res.error !== 'no-speech' && res.error !== 'aborted') { toast('🎤 ✕'); showNumpad(); return; }
+    const nums = finalNumbers(res.alts);
+    if (!nums.length) { toast('👂 ?'); speak('No te escuché. Dilo otra vez'); return; }
+    check(nums.includes(me.n) ? me.n : nums[0]);
+  });
+}
+function check(v) {
+  if (!R) return; const me = R;
+  if (v === me.n) {
+    sfx.ok(); S.coins += 2; save(); vib(60);
+    const el = $('#answer'); if (el) el.innerHTML = `<div class="gain">+2 ${coinSVG()}</div>`;
+    later(() => go('reveal', { n: me.n }), 900);
+  } else {
+    me.fails++; sfx.bad(); const g = $('#grid'); if (g) { g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); }
+    me.done.clear(); $$('.cell').forEach(c => c.classList.remove('on')); me.asked = false;
+    const el = $('#answer'); if (el) el.innerHTML = `<div class="hint">🤔</div>`;
+    speak('Casi. Vamos a contar otra vez');
+    if (me.fails >= 2) later(helpCount, 2600);
+    else later(() => { const e2 = $('#answer'); if (e2 && R === me && !me.asked) e2.innerHTML = `<div class="hint">👆</div>`; }, 1800);
+  }
+}
+async function helpCount() {
+  const me = R; if (!me || me.helping) return; me.helping = true; stopListen();
+  me.done.clear(); $$('.cell').forEach(c => c.classList.remove('on')); me.asked = false;
+  const el0 = $('#answer'); if (el0) el0.innerHTML = `<div class="hint">🔊</div>`;
+  for (const el of $$('.cell[data-i]')) {
+    if (R !== me || !document.body.contains(el)) return;
+    el.classList.add('hl', 'on'); me.done.add(+el.dataset.i); sfx.pop(300 + 60 * me.done.size);
+    await speakWait(numWord(me.done.size)); await sleep(250); el.classList.remove('hl');
+  }
+  if (R !== me) return; me.helping = false; ask();
+}
+
+// ---- REVELAR EL NÚMERO ----
+function reveal({ n }) {
+  app.innerHTML = `<div class="screen reveal" style="background:linear-gradient(${COLORS[n][1]},#fff)">
+    <div class="hud"><button class="btn gray sq" id="home">⌂</button>${coinChip()}<span style="width:60px"></span></div>
+    <div class="bigwrap" id="big">${numeralSVG(n)}</div>
+    <div class="qty">${qtyBlocks(n)}</div>
+    <button class="btn green big" id="go">📷 ¡A buscar!</button>
+  </div>`;
+  $('#home').onclick = () => go('menu');
+  $('#big').onclick = () => { unlockAudio(); speak(numWord(n)); };
+  $('#go').onclick = () => { unlockAudio(); go('hunt', { n }); };
+  confetti($('.screen'), 18);
+  later(() => speak(`¡Muy bien! Es el ${numWord(n)}. ¡Búscalo escondido en la casa!`), 400);
+}
+
+// ---- ESCONDIDAS: buscar la tarjeta con la cámara ----
+function hunt({ n }) {
+  const me = H = { n, wrong: 0, lastWrong: 0, lastAt: 0, done: false };
+  app.innerHTML = `<div class="screen hunt">
+    <video id="cam" playsinline muted autoplay></video>
+    <div class="frame"></div>
+    <div class="overlay">
+      <div class="topline">
+        <button class="btn gray sq" id="home">⌂</button>
+        <div class="targetbox" id="target">${numeralSVG(n)}<span class="spk">🔊</span></div>
+        <button class="parentok" id="pfind">✓</button>
+      </div>
+      <div id="msgbox"></div>
+    </div></div>`;
+  $('#home').onclick = () => go('menu');
+  $('#target').onclick = () => { unlockAudio(); speak(`Busca el ${numWord(n)}`); };
+  onHold($('#pfind'), 900, () => foundIt());
+  speak(`Busca el ${numWord(n)}`);
+  startScan($('#cam'), text => onCode(text)).catch(err => {
+    const m = $('#msgbox'); if (!m) return;
+    const why = err && err.message === 'noscanner' ? 'Falta el lector de QR. Pon jsQR.js junto al juego.' : 'Necesito la cámara 📷 Dale permiso.';
+    m.innerHTML = `<div class="msg bad">${why}</div><button class="btn blue" id="retry" style="margin-top:10px;width:100%">↻</button>`;
+    const r = $('#retry'); if (r) r.onclick = () => go('hunt', { n });
+  });
+}
+function onCode(text) {
+  const me = H; if (!me || me.done || CUR !== 'hunt') return;
+  const m = /^CN-([1-9])$/.exec(String(text).trim()); if (!m) return;
+  const v = +m[1];
+  if (v === me.n) return foundIt();
+  const now = Date.now(); if (v === me.lastWrong && now - me.lastAt < 4000) return;
+  me.lastWrong = v; me.lastAt = now; me.wrong++; sfx.bad(); vib(80);
+  const box = $('#msgbox'); if (box) { box.innerHTML = `<div class="msg bad">Ese es el ${v}<br>Busca el ${me.n}</div>`; later(() => { const b = $('#msgbox'); if (b) b.innerHTML = ''; }, 3000); }
+  speak(`Ese es el ${numWord(v)}. Busca el ${numWord(me.n)}`);
+}
+function foundIt() {
+  const me = H; if (!me || me.done) return; me.done = true; stopScan();
+  const gain = 5 + (me.wrong === 0 ? 3 : 0);
+  S.coins += gain; S.found[me.n] = (S.found[me.n] || 0) + 1; S.totalFound++; save();
+  go('found', { n: me.n, gain });
+}
+
+// ---- ¡LO ENCONTRÓ! ----
+function found({ n, gain }) {
+  app.innerHTML = `<div class="screen found" style="background:linear-gradient(${COLORS[n][1]},#fff)">
+    <div class="hud"><span style="width:60px"></span>${coinChip()}<span style="width:60px"></span></div>
+    <div class="bigwrap">${numeralSVG(n)}</div>
+    <div class="gain">+${gain} ${coinSVG()}</div>
+    <button class="btn green big" id="again">▶ Otra vez</button>
+    <div class="row"><button class="btn gray" id="home">⌂</button><button class="btn gold" id="shop">${chestSVG('wood')}</button></div>
+  </div>`;
+  confetti($('.screen'), 40); sfx.ok(); later(sfx.coin, 700); vib([60, 40, 60]);
+  $('#again').onclick = () => { unlockAudio(); go('count'); };
+  $('#home').onclick = () => go('menu');
+  $('#shop').onclick = () => go('shop');
+  later(() => speak(`¡Lo encontraste! ¡Es el ${numWord(n)}! Ganaste ${numWord(gain)} monedas`), 500);
+}
+
+// ---- TIENDA ----
+const CAT = [
+  { cat: 'armor', items: [['leather', 'Cuero', 10], ['iron', 'Hierro', 25], ['gold', 'Oro', 40], ['diamond', 'Diamante', 70]] },
+  { cat: 'sword', items: [['wood', 'Madera', 5], ['stone', 'Piedra', 15], ['iron', 'Hierro', 30], ['gold', 'Oro', 45], ['diamond', 'Diamante', 60]] },
+  { cat: 'wall', items: [['wood', 'Madera', 0], ['stone', 'Piedra', 10], ['brick', 'Ladrillo', 20], ['obsidian', 'Obsidiana', 50], ['gold', 'Oro', 80], ['diamond', 'Diamante', 120]] },
+  { cat: 'bed', items: [['red', 'Roja', 12], ['blue', 'Azul', 12], ['green', 'Verde', 12], ['purple', 'Morada', 12]] },
+  { cat: 'chest', items: [['wood', 'Madera', 8], ['iron', 'Hierro', 25], ['gold', 'Oro', 50], ['diamond', 'Diamante', 90]] },
+  { cat: 'pet', items: [['wolf', 'Lobito', 100]] },
+];
+function itemIcon(cat, id) {
+  switch (cat) {
+    case 'armor': return charSVG(id, null);
+    case 'sword': return svgOf(4, 11, swordCells(id));
+    case 'wall': return svgOf(12, 12, fnCells(12, 12, (x, y) => WALLS[id](x, y)));
+    case 'bed': return bedSVG(id);
+    case 'chest': return chestSVG(id);
+    default: return svgOf(10, 10, mapCells(WOLF, WOLFPAL));
+  }
+}
+const isOwned = (cat, id) => cat === 'pet' ? S.wolf : !!S.owned[cat + ':' + id];
+const isEq = (cat, id) => cat === 'pet' ? S.wolf : S.equip[cat] === id;
+let TAB = 'armor';
+function shop() {
+  const tabs = CAT.map(c => `<button class="tab ${c.cat === TAB ? 'on' : ''}" data-t="${c.cat}">${itemIcon(c.cat, c.cat === 'wall' ? 'brick' : c.cat === 'pet' ? 'wolf' : c.items[1][0])}</button>`).join('');
+  const cat = CAT.find(c => c.cat === TAB);
+  const items = cat.items.map(([id, nm, price]) => {
+    const own = isOwned(TAB, id), eq = own && isEq(TAB, id), cant = !own && S.coins < price;
+    return `<button class="item ${own ? 'owned' : ''} ${eq ? 'eq' : ''} ${cant ? 'cant' : ''}" data-id="${id}">
+      ${own ? '<span class="badge">' + (eq ? '⭐' : '✓') + '</span>' : ''}
+      <div class="ico">${itemIcon(TAB, id)}</div><div class="nm">${nm}</div>
+      ${own ? '' : `<div class="price">${coinSVG()}${price}</div>`}</button>`;
+  }).join('');
+  app.innerHTML = `<div class="screen shop">
+    <div class="hud"><button class="btn gray sq" id="home">⌂</button>${coinChip()}<span style="width:60px"></span></div>
+    <div class="mini">${sceneSVG()}</div>
+    <div class="tabs">${tabs}</div>
+    <div class="items">${items}</div>
+  </div>`;
+  $('#home').onclick = () => go('menu');
+  $$('.tab').forEach(t => t.onclick = () => { unlockAudio(); sfx.pop(450); TAB = t.dataset.t; shop(); });
+  $$('.item').forEach(b => b.onclick = () => { unlockAudio(); tapItem(b.dataset.id); });
+}
+function tapItem(id) {
+  const it = CAT.find(c => c.cat === TAB).items.find(i => i[0] === id), price = it[2];
+  if (isOwned(TAB, id)) {
+    if (TAB === 'pet') { sfx.coin(); speak('¡Guau!'); return; }
+    S.equip[TAB] = id; save(); sfx.pop(600); shop(); return;
+  }
+  if (S.coins < price) { sfx.bad(); vib(80); const need = price - S.coins; toast(`Te faltan ${need} 🪙`); speak(`Te faltan ${numWord(need)} monedas`); return; }
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<div class="panel"><div class="ico">${itemIcon(TAB, id)}</div><div class="price">${coinSVG()}${price}</div><div class="row"><button class="btn red" id="no">✕</button><button class="btn green" id="yes">✓</button></div></div>`;
+  $('.screen').appendChild(m);
+  $('#no').onclick = () => m.remove();
+  $('#yes').onclick = () => {
+    S.coins -= price;
+    if (TAB === 'pet') S.wolf = true; else { S.owned[TAB + ':' + id] = true; S.equip[TAB] = id; }
+    save(); sfx.buy(); vib([50, 30, 50]); shop(); confetti($('.screen'), 24);
+    speak(TAB === 'pet' ? '¡Tienes un lobito! ¡Guau!' : '¡Lo compraste!');
+  };
+}
+
+// ---- PADRES ----
+function parent() {
+  const sel = (a, b) => a === b ? 'sel' : '';
+  const found = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `${n}: <b>${S.found[n] || 0}</b>`).join(' · ');
+  const bd = ('BarcodeDetector' in window) ? 'sí' : 'no', js = window.jsQR ? 'sí' : 'no (pon jsQR.js junto al juego si BarcodeDetector = no)';
+  app.innerHTML = `<div class="screen parent">
+    <div class="hud"><button class="btn gray sq" id="home">⌂</button><b style="font-size:22px">Padres</b><span style="width:60px"></span></div>
+    <div class="pcard"><h3>Números que salen (hasta el…)</h3>
+      <div class="chips"><button class="btn gray ${sel(S.max, 0)}" data-max="0">Auto</button>${[2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button class="btn gray ${sel(S.max, n)}" data-max="${n}">${n}</button>`).join('')}</div>
+      <small>Ahora salen del 1 al ${maxNum()}. En Auto sube 1 número cada 4 tarjetas encontradas.</small></div>
+    <div class="pcard"><h3>Voz de la app</h3><button class="btn gray ${S.voice ? 'sel' : ''}" id="tvoice">${S.voice ? 'Encendida' : 'Apagada'}</button></div>
+    <div class="pcard"><h3>Contestar con micrófono</h3><button class="btn gray ${S.mic ? 'sel' : ''}" id="tmic">${S.mic ? 'Micrófono' : 'Botones con números'}</button><small>Reconocimiento de voz del navegador: ${SR ? 'disponible' : 'no disponible (se usan botones)'}</small></div>
+    <div class="pcard"><h3>Monedas: ${S.coins}</h3><div class="chips"><button class="btn gray" data-c="-10">−10</button><button class="btn gray" data-c="10">+10</button><button class="btn gray" data-c="50">+50</button></div></div>
+    <div class="pcard"><h3>Lector de QR</h3><small>BarcodeDetector: ${bd}<br>jsQR.js: ${js}</small></div>
+    <div class="pcard"><h3>Veces que encontró cada número</h3><div>${found}</div></div>
+    <div class="pcard"><button class="btn red" id="reset">Borrar todo (mantén 2 s)</button></div>
+  </div>`;
+  $('#home').onclick = () => go('menu');
+  $$('[data-max]').forEach(b => b.onclick = () => { S.max = +b.dataset.max; save(); parent(); });
+  $$('[data-c]').forEach(b => b.onclick = () => { S.coins = Math.max(0, S.coins + (+b.dataset.c)); save(); parent(); });
+  $('#tvoice').onclick = () => { S.voice = !S.voice; save(); parent(); };
+  $('#tmic').onclick = () => { S.mic = !S.mic; save(); parent(); };
+  onHold($('#reset'), 2000, () => { S = defaults(); save(); go('menu'); });
+}
+
+const SCREENS = { menu, count, reveal, hunt, found, shop, parent };
+
+// ---------- arranque ----------
+function boot() {
+  app = document.getElementById('app'); S = load();
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopScan(); else if (CUR === 'hunt' && H && !H.done) go('hunt', { n: H.n }); });
+  try { hasTTS() && speechSynthesis.getVoices(); } catch (e) { }
+  go('menu');
+}
+if (typeof document !== 'undefined' && document.getElementById('app')) boot();
+</script>
+</body>
+</html>
